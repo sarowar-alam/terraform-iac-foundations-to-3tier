@@ -1,5 +1,0 @@
-# Copy to terraform.tfvars and fill in your values
-aws_region    = "ap-south-1"
-instance_type = "t2.micro"
-key_name      = "sarowar-ostad-mumbai"
-project_name  = "bmi-health-tracker"

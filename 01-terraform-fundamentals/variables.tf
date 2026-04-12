@@ -21,3 +21,8 @@ variable "project_name" {
   type        = string
   default     = "bmi-health-tracker"
 }
+
+variable "subnet_id" {
+  description = "ID of the public subnet to launch the instance into"
+  type        = string
+}

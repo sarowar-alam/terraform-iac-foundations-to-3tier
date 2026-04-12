@@ -18,10 +18,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-data "aws_vpc" "default" {
-  default = true
-}
-
 # Call the local webserver module
 module "web_server" {
   source = "./modules/webserver"
@@ -29,7 +25,8 @@ module "web_server" {
   # Pass variables into the module
   project_name     = var.project_name
   environment      = var.environment
-  vpc_id           = data.aws_vpc.default.id
+  vpc_id           = var.vpc_id
+  subnet_id        = var.subnet_id
   instance_type    = var.instance_type
   key_name         = var.key_name
   allowed_ssh_cidr = var.allowed_ssh_cidr

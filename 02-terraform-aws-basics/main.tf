@@ -42,7 +42,7 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
   }
   filter {
     name   = "virtualization-type"
@@ -50,16 +50,16 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# Fetch default VPC (for this lesson — real VPC built in 05-networking-vpc)
-data "aws_vpc" "default" {
-  default = true
+# Fetch VPC by ID — set vpc_id in terraform.tfvars
+data "aws_vpc" "named_vpc" {
+  id = var.vpc_id
 }
 
 # Security Group — allow SSH and HTTP
 resource "aws_security_group" "web" {
   name        = "${local.name_prefix}-basics-sg"
   description = "Allow SSH and HTTP"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = data.aws_vpc.named_vpc.id
 
   ingress {
     description = "SSH"
@@ -94,6 +94,8 @@ resource "aws_instance" "web" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   key_name               = var.key_name
+  subnet_id              = var.subnet_id          # ← add this line
+  associate_public_ip_address = true
   vpc_security_group_ids = [aws_security_group.web.id]
 
   user_data = <<-EOF

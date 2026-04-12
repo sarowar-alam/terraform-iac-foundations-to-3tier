@@ -1,6 +1,10 @@
 variable "project_name" { type = string }
 variable "environment" { type = string }
 variable "vpc_id" { type = string }
+variable "subnet_id" {
+  description = "ID of the public subnet to launch the instance into"
+  type        = string
+}
 variable "instance_type" {
   type    = string
   default = "t2.micro"

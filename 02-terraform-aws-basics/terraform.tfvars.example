@@ -1,6 +1,0 @@
-aws_region       = "ap-south-1"
-project_name     = "bmi-health-tracker"
-environment      = "dev"
-instance_type    = "t2.micro"
-key_name         = "sarowar-ostad-mumbai"
-allowed_ssh_cidr = "YOUR_IP/32"   # run: curl ifconfig.me
