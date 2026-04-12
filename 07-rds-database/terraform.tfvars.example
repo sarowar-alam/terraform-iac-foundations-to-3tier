@@ -1,0 +1,5 @@
+aws_region        = "ap-south-1"
+project_name      = "bmi-health-tracker"
+environment       = "dev"
+allowed_ssh_cidr  = "YOUR_IP/32"
+db_instance_class = "db.t3.micro"

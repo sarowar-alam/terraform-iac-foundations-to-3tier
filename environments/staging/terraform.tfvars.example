@@ -1,0 +1,6 @@
+aws_region       = "ap-south-1"
+project_name     = "bmi-health-tracker"
+environment      = "staging"
+key_name         = "sarowar-ostad-mumbai"
+allowed_ssh_cidr = "YOUR_IP/32"
+domain_name      = "bmi.ostaddevops.click"

@@ -1,0 +1,69 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+
+# Provider plugins
+.terraform/providers/
+
+# Terraform plan files
+*.tfplan
+tfplan
+
+# Environment files - NEVER commit real values
+.env
+.env.*
+!.env.example
+
+# SSH private keys
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+
+# Build output
+dist/
+build/
+.next/
+
+# Sensitive variable files (keep .example files)
+*.tfvars
+!*.tfvars.example

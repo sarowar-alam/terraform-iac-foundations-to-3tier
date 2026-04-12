@@ -1,0 +1,14 @@
+aws_region             = "ap-south-1"
+project_name           = "bmi-health-tracker"
+environment            = "prod"
+key_name               = "sarowar-ostad-mumbai"
+allowed_ssh_cidr       = "YOUR_IP/32"
+
+frontend_instance_type = "t3.medium"
+backend_instance_type  = "t3.large"
+db_instance_class      = "db.t3.medium"
+multi_az               = true
+
+certificate_arn = "arn:aws:acm:ap-south-1:388779989543:certificate/c5e5f2a5-c678-4799-b355-765c13584fe0"
+hosted_zone_id  = "Z1019653XLWIJ02C53P5"
+domain_name     = "bmi.ostaddevops.click"

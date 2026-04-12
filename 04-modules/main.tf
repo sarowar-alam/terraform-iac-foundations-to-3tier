@@ -1,0 +1,36 @@
+# ==============================================================================
+# 04 — Terraform Modules
+# Shows how to create and call a reusable local module.
+# The webserver module packages EC2 + SG into a reusable component.
+# ==============================================================================
+
+terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+# Call the local webserver module
+module "web_server" {
+  source = "./modules/webserver"
+
+  # Pass variables into the module
+  project_name     = var.project_name
+  environment      = var.environment
+  vpc_id           = data.aws_vpc.default.id
+  instance_type    = var.instance_type
+  key_name         = var.key_name
+  allowed_ssh_cidr = var.allowed_ssh_cidr
+}

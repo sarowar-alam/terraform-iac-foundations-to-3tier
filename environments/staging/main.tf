@@ -1,0 +1,144 @@
+# ==============================================================================
+# Environment: staging
+# Medium instances, no multi-AZ, 7-day backup retention
+# State key: staging/terraform.tfstate
+# ==============================================================================
+
+terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "terraform-state-bmi-ostaddevops"
+    key            = "staging/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "terraform-state-lock"
+    encrypt        = true
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "terraform"
+      Owner       = "devops"
+    }
+  }
+}
+
+module "vpc" {
+  source       = "../../modules/vpc"
+  project_name = var.project_name
+  environment  = var.environment
+}
+
+module "security_groups" {
+  source                 = "../../modules/security-group"
+  project_name           = var.project_name
+  environment            = var.environment
+  vpc_id                 = module.vpc.vpc_id
+  allowed_ssh_cidr       = var.allowed_ssh_cidr
+  frontend_public_access = false
+}
+
+module "iam_backend" {
+  source       = "../../modules/iam"
+  project_name = var.project_name
+  environment  = var.environment
+  aws_region   = var.aws_region
+  role_suffix  = "backend"
+}
+
+module "rds" {
+  source                = "../../modules/rds"
+  project_name          = var.project_name
+  environment           = var.environment
+  subnet_ids            = module.vpc.private_db_subnet_ids
+  security_group_id     = module.security_groups.rds_sg_id
+  db_password           = module.secrets.db_password
+  instance_class        = "db.t3.small"
+  multi_az              = false
+  backup_retention_days = 7
+  skip_final_snapshot   = true
+}
+
+module "secrets" {
+  source       = "../../modules/secrets"
+  project_name = var.project_name
+  environment  = var.environment
+  db_host      = module.rds.db_host
+  depends_on   = [module.rds]
+}
+
+module "bastion" {
+  source             = "../../modules/ec2"
+  name               = "${var.project_name}-${var.environment}-bastion"
+  role               = "bastion"
+  instance_type      = "t3.micro"
+  subnet_id          = module.vpc.public_subnet_ids[0]
+  security_group_ids = [module.security_groups.bastion_sg_id]
+  key_name           = var.key_name
+}
+
+module "backend" {
+  source               = "../../modules/ec2"
+  name                 = "${var.project_name}-${var.environment}-backend"
+  role                 = "backend"
+  instance_type        = "t3.medium"
+  subnet_id            = module.vpc.private_app_subnet_ids[0]
+  security_group_ids   = [module.security_groups.backend_sg_id]
+  key_name             = var.key_name
+  iam_instance_profile = module.iam_backend.instance_profile_name
+
+  user_data = templatefile("${path.module}/../../scripts/backend.sh", {
+    database_url_secret_name = module.secrets.database_url_secret_name
+    frontend_url             = "https://${var.domain_name}"
+    environment              = var.environment
+    aws_region               = var.aws_region
+  })
+
+  depends_on = [module.secrets, module.rds]
+}
+
+module "frontend" {
+  source             = "../../modules/ec2"
+  name               = "${var.project_name}-${var.environment}-frontend"
+  role               = "frontend"
+  instance_type      = "t3.small"
+  subnet_id          = module.vpc.private_app_subnet_ids[1]
+  security_group_ids = [module.security_groups.frontend_sg_id]
+  key_name           = var.key_name
+
+  user_data = templatefile("${path.module}/../../scripts/frontend.sh", {
+    backend_private_ip = module.backend.private_ip
+    phase              = "production"
+  })
+
+  depends_on = [module.backend]
+}
+
+module "alb" {
+  source                = "../../modules/alb"
+  project_name          = var.project_name
+  environment           = var.environment
+  vpc_id                = module.vpc.vpc_id
+  public_subnet_ids     = module.vpc.public_subnet_ids
+  alb_sg_id             = module.security_groups.alb_sg_id
+  certificate_arn       = var.certificate_arn
+  hosted_zone_id        = var.hosted_zone_id
+  domain_name           = var.domain_name
+  frontend_instance_ids = [module.frontend.instance_id]
+  backend_instance_ids  = [module.backend.instance_id]
+}

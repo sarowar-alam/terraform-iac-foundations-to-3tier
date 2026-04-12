@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars and set your values
+# cp terraform.tfvars.example terraform.tfvars
+
+aws_region = "ap-south-1"
+key_name   = "sarowar-ostad-mumbai"
