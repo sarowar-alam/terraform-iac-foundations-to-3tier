@@ -29,16 +29,11 @@ provider "aws" {
   }
 }
 
-# Default VPC â€” no custom VPC needed for Module 4 single-instance
-data "aws_vpc" "default" {
-  default = true
-}
-
-# Security Group â€” same ports as Module 4 manual setup
+# Security Group â€" same ports as Module 4 manual setup
 resource "aws_security_group" "single_instance" {
   name        = "${var.project_name}-${var.environment}-single-sg"
   description = "Module 4: SSH, HTTP, HTTPS, backend API"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   ingress {
     description = "SSH"
@@ -78,7 +73,7 @@ module "single_instance" {
   name               = "${var.project_name}-${var.environment}-single-instance"
   role               = "all-tiers"
   instance_type      = var.instance_type
-  subnet_id          = tolist(data.aws_subnets.default.ids)[0]
+  subnet_id          = var.subnet_id
   security_group_ids = [aws_security_group.single_instance.id]
   key_name           = var.key_name
   root_volume_size   = 30 # extra space for PostgreSQL + Node + React build
@@ -87,9 +82,4 @@ module "single_instance" {
   user_data = file("${path.module}/scripts/single-instance.sh")
 }
 
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
+

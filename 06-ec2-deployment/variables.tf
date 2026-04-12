@@ -27,3 +27,13 @@ variable "allowed_ssh_cidr" {
   description = "Your IP: x.x.x.x/32"
   type        = string
 }
+
+variable "vpc_id" {
+  description = "ID of the VPC to deploy into"
+  type        = string
+}
+
+variable "subnet_id" {
+  description = "ID of the public subnet to launch the instance into"
+  type        = string
+}
