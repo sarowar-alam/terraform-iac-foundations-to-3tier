@@ -9,36 +9,55 @@
 #
 # Terraform passes BACKEND_PRIVATE_IP via templatefile()
 # ==============================================================================
-set -euo pipefail
-exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+set -e
+
+# Logging — simple redirect without pipefail-breaking process substitution
+exec > /var/log/user-data.log 2>&1
 
 echo "============================="
 echo " BMI Frontend — User Data"
+echo " Timestamp: $(date)"
 echo "============================="
 
-# Template variable injected by Terraform templatefile()
+# Template variables injected by Terraform templatefile()
 BACKEND_PRIVATE_IP="${backend_private_ip}"
 PHASE="${phase}"  # "basic" or "production"
+
+APP_DIR="/home/ubuntu/bmi-health-tracker"
 
 # ------------------------------------------------------------------------------
 # System update + dependencies
 # ------------------------------------------------------------------------------
-apt-get update -y
-apt-get install -y curl git nginx software-properties-common
+echo "[INFO] Updating system packages..."
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq curl git nginx software-properties-common ca-certificates gnupg
+echo "[SUCCESS] Base packages installed"
 
 # Node.js 18 for building the React app
+echo "[INFO] Installing Node.js 18..."
 curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
 apt-get install -y nodejs
+echo "[SUCCESS] Node.js $(node -v) / npm $(npm -v) installed"
 
 # ------------------------------------------------------------------------------
 # Clone repository and build React app
 # ------------------------------------------------------------------------------
-APP_DIR="/home/ubuntu/bmi-health-tracker"
-git clone https://github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
+echo "[INFO] Cloning application repository..."
+if [ -d "$APP_DIR/.git" ]; then
+    echo "[INFO] Repo already exists, pulling latest..."
+    GIT_TERMINAL_PROMPT=0 git -C "$APP_DIR" pull
+else
+    GIT_TERMINAL_PROMPT=0 git clone https://github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
+fi
 chown -R ubuntu:ubuntu "$APP_DIR"
+echo "[SUCCESS] Repository ready"
 
+echo "[INFO] Installing npm dependencies..."
 cd "$APP_DIR/frontend"
 npm ci
+
+echo "[INFO] Building React production bundle..."
 npm run build
 
 # Deploy build to Nginx web root
