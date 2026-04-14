@@ -48,9 +48,9 @@ echo "[SUCCESS] Node.js $(node -v) / npm $(npm -v) installed"
 echo "[INFO] Cloning application repository..."
 if [ -d "$APP_DIR/.git" ]; then
     echo "[INFO] Repo already exists, pulling latest..."
-    GIT_TERMINAL_PROMPT=0 git -C "$APP_DIR" pull
+    git -C "$APP_DIR" pull
 else
-    GIT_TERMINAL_PROMPT=0 git clone https://github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
+    git clone https://github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
 fi
 chown -R ubuntu:ubuntu "$APP_DIR"
 echo "[SUCCESS] Repository ready"
