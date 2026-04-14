@@ -150,6 +150,19 @@ resource "aws_security_group" "backend" {
     security_groups = [aws_security_group.alb.id]
   }
 
+  # Phase 2 (production): also allow port 3000 from frontend SG via ALB routing
+  # Phase 1 (basic): frontend EC2 calls backend directly
+  dynamic "ingress" {
+    for_each = var.frontend_public_access ? [1] : []
+    content {
+      description     = "Node.js API from frontend EC2 (Phase 1)"
+      from_port       = 3000
+      to_port         = 3000
+      protocol        = "tcp"
+      security_groups = [aws_security_group.frontend.id]
+    }
+  }
+
   ingress {
     description     = "SSH from bastion"
     from_port       = 22
@@ -169,18 +182,6 @@ resource "aws_security_group" "backend" {
   tags = {
     Name = "${var.project_name}-${var.environment}-backend-sg"
   }
-}
-
-# Phase 1 extra rule: backend also reachable from frontend EC2 directly
-resource "aws_security_group_rule" "backend_from_frontend" {
-  count                    = var.frontend_public_access ? 1 : 0
-  type                     = "ingress"
-  description              = "Node.js API from frontend EC2 (Phase 1)"
-  from_port                = 3000
-  to_port                  = 3000
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.frontend.id
-  security_group_id        = aws_security_group.backend.id
 }
 
 # ------------------------------------------------------------------------------

@@ -10,8 +10,8 @@
 #   ${environment}               — dev / staging / prod
 #   ${aws_region}                — ap-south-1
 # ==============================================================================
-set -euo pipefail
-exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+set -e
+exec > /var/log/user-data.log 2>&1
 
 echo "============================="
 echo " BMI Backend — User Data"
@@ -69,14 +69,14 @@ echo "Database URL retrieved successfully."
 # Clone repository
 # ------------------------------------------------------------------------------
 APP_DIR="/home/ubuntu/bmi-health-tracker"
-git clone https://github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
+git clone https://github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
 chown -R ubuntu:ubuntu "$APP_DIR"
 
 # ------------------------------------------------------------------------------
 # Install backend dependencies
 # ------------------------------------------------------------------------------
 cd "$APP_DIR/backend"
-npm ci --production
+npm install --production
 
 # ------------------------------------------------------------------------------
 # Write .env (DATABASE_URL from Secrets Manager — never hardcoded)

@@ -55,7 +55,7 @@ echo "[SUCCESS] Repository ready"
 
 echo "[INFO] Installing npm dependencies..."
 cd "$APP_DIR/frontend"
-npm ci
+npm install
 
 echo "[INFO] Building React production bundle..."
 npm run build
