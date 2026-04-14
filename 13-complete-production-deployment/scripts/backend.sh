@@ -105,13 +105,14 @@ done
 mkdir -p "$APP_DIR/backend/logs"
 chown -R ubuntu:ubuntu "$APP_DIR/backend/logs"
 
-# Start as ubuntu user
-sudo -u ubuntu bash -c "cd $APP_DIR/backend && pm2 start ecosystem.config.js --env production"
-sudo -u ubuntu bash -c "pm2 save"
+# Start PM2 as ubuntu user
+export PM2_HOME=/home/ubuntu/.pm2
+sudo -u ubuntu bash -c "export PM2_HOME=/home/ubuntu/.pm2; cd $APP_DIR/backend && pm2 start ecosystem.config.js --env production"
+sudo -u ubuntu bash -c "export PM2_HOME=/home/ubuntu/.pm2; pm2 save"
 
-# Configure PM2 to start on boot
-env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
-systemctl enable pm2-ubuntu
+# Configure PM2 to start on boot (as ubuntu user, passing correct PATH)
+sudo -u ubuntu bash -c "export PM2_HOME=/home/ubuntu/.pm2; pm2 startup systemd -u ubuntu --hp /home/ubuntu" | grep "sudo env" | bash || true
+systemctl enable pm2-ubuntu 2>/dev/null || true
 
 echo ""
 echo "====================================="
