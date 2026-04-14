@@ -25,6 +25,12 @@ variable "db_host" {
   type        = string
 }
 
+variable "db_password" {
+  description = "Master database password — generated at root, passed in"
+  type        = string
+  sensitive   = true
+}
+
 variable "recovery_window_days" {
   description = "Days before permanent deletion after secret is deleted (0 = immediate)"
   type        = number

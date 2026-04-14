@@ -20,16 +20,18 @@ terraform {
 
 provider "aws" {
   region = "ap-south-1"
+  profile = "sarowar-ostad"  # Using your AWS profile
+
 }
 
 # S3 bucket for Terraform state
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "terraform-state-bmi-ostaddevops"
 
-  # Prevent accidental deletion of the state bucket
-  lifecycle {
-    prevent_destroy = true
-  }
+  # # Prevent accidental deletion of the state bucket
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 
   tags = {
     Name      = "terraform-state-bmi-ostaddevops"

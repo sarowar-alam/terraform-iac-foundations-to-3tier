@@ -23,24 +23,28 @@ resource "aws_db_parameter_group" "postgres14" {
 
   # Connection pooling tuning
   parameter {
-    name  = "max_connections"
-    value = "100"
+    name         = "max_connections"
+    value        = "100"
+    apply_method = "pending-reboot"
   }
 
   # Memory tuning — match the values from database/setup-database.sh
   parameter {
-    name  = "shared_buffers"
-    value = "{DBInstanceClassMemory/4}"
+    name         = "shared_buffers"
+    value        = "{DBInstanceClassMemory/4}"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "log_connections"
-    value = "1"
+    name         = "log_connections"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "log_disconnections"
-    value = "1"
+    name         = "log_disconnections"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   parameter {

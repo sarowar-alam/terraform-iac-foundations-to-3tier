@@ -8,17 +8,6 @@
 #   /{environment}/bmi-health-tracker/database-url   → full connection string
 # ==============================================================================
 
-# Generate a cryptographically secure random password
-resource "random_password" "db" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?" # Exclude chars that break shell scripts
-  min_upper        = 2
-  min_lower        = 2
-  min_numeric      = 2
-  min_special      = 2
-}
-
 # ------------------------------------------------------------------------------
 # Secret: DB Password
 # ------------------------------------------------------------------------------
@@ -34,7 +23,7 @@ resource "aws_secretsmanager_secret" "db_password" {
 
 resource "aws_secretsmanager_secret_version" "db_password" {
   secret_id     = aws_secretsmanager_secret.db_password.id
-  secret_string = random_password.db.result
+  secret_string = var.db_password
 
   lifecycle {
     # Prevent Terraform from resetting the password on every apply
@@ -59,7 +48,7 @@ resource "aws_secretsmanager_secret" "database_url" {
 resource "aws_secretsmanager_secret_version" "database_url" {
   secret_id = aws_secretsmanager_secret.database_url.id
   # Connection string format: postgresql://user:password@host:5432/dbname
-  secret_string = "postgresql://${var.db_username}:${random_password.db.result}@${var.db_host}:5432/${var.db_name}"
+  secret_string = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}:5432/${var.db_name}"
 
   lifecycle {
     ignore_changes = [secret_string]

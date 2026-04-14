@@ -17,20 +17,23 @@ resource "aws_db_subnet_group" "main" {
 
 # PostgreSQL 14 Parameter Group with performance tuning
 resource "aws_db_parameter_group" "postgres14" {
-  name        = "${var.project_name}-${var.environment}-pg14"
+  name_prefix = "${var.project_name}-${var.environment}-pg14-"
   family      = "postgres14"
   description = "PostgreSQL 14 parameter group for ${var.project_name}"
 
   # Connection pooling tuning
   parameter {
-    name  = "max_connections"
-    value = "100"
+    name         = "max_connections"
+    value        = "100"
+    apply_method = "pending-reboot"
   }
 
   # Memory tuning — match the values from database/setup-database.sh
+  # shared_buffers is a static parameter — requires pending-reboot apply method
   parameter {
-    name  = "shared_buffers"
-    value = "{DBInstanceClassMemory/4}"
+    name         = "shared_buffers"
+    value        = "{DBInstanceClassMemory/4}"
+    apply_method = "pending-reboot"
   }
 
   parameter {

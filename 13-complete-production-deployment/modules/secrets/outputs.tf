@@ -1,6 +1,6 @@
 output "db_password" {
   description = "Generated database password (sensitive)"
-  value       = random_password.db.result
+  value       = var.db_password
   sensitive   = true
 }
 

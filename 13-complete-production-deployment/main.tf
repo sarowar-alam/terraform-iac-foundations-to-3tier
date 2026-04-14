@@ -30,17 +30,19 @@ terraform {
   }
 
   # Remote state â€” uncomment after running make bootstrap
-  # backend "s3" {
-  #   bucket         = "terraform-state-bmi-ostaddevops"
-  #   key            = "prod/terraform.tfstate"
-  #   region         = "ap-south-1"
-  #   dynamodb_table = "terraform-state-lock"
-  #   encrypt        = true
-  # }
+  backend "s3" {
+    bucket         = "terraform-state-bmi-ostaddevops"
+    key            = "prod/13-complete-production-deployment/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "terraform-state-lock"
+    encrypt        = true
+    profile        = "sarowar-ostad"
+  }
 }
 
 provider "aws" {
   region = var.aws_region
+  profile        = "sarowar-ostad"
   default_tags {
     tags = {
       Project     = var.project_name
@@ -91,8 +93,23 @@ module "iam_backend" {
 }
 
 # ==============================================================================
+# DATABASE PASSWORD
+# Generated at root so both module.rds and module.secrets can receive it
+# without creating a circular dependency.
+# ==============================================================================
+resource "random_password" "db_master" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+  min_upper        = 2
+  min_lower        = 2
+  min_numeric      = 2
+  min_special      = 2
+}
+
+# ==============================================================================
 # DATABASE + SECRETS
-# Must create RDS first (to get db_host), then create secrets with db_host
+# random_password lives at root — passed into both modules to break the cycle.
 # ==============================================================================
 module "rds" {
   source = "./modules/rds"
@@ -101,7 +118,7 @@ module "rds" {
   environment         = var.environment
   subnet_ids          = module.vpc.private_db_subnet_ids
   security_group_id   = module.security_groups.rds_sg_id
-  db_password         = module.secrets.db_password
+  db_password         = random_password.db_master.result
   instance_class      = var.db_instance_class
   multi_az            = var.multi_az
   backup_retention_days = 1
@@ -110,12 +127,12 @@ module "rds" {
 }
 
 module "secrets" {
-  source = "./modules/secrets"
+  source               = "./modules/secrets"
   project_name         = var.project_name
   environment          = var.environment
+  db_password          = random_password.db_master.result
   db_host              = module.rds.db_host
-  recovery_window_days = 0 # Immediate deletion â€” clean destroy after demo
-  depends_on           = [module.rds]
+  recovery_window_days = 0 # Immediate deletion — clean destroy after demo
 }
 
 # ==============================================================================
@@ -154,13 +171,14 @@ module "backend" {
 
 module "frontend" {
   source = "./modules/ec2"
-  name               = "${var.project_name}-${var.environment}-frontend"
-  role               = "frontend"
-  instance_type      = var.frontend_instance_type
-  subnet_id          = module.vpc.private_app_subnet_ids[1]
-  security_group_ids = [module.security_groups.frontend_sg_id]
-  key_name           = var.key_name
-  root_volume_size   = 20
+  name                 = "${var.project_name}-${var.environment}-frontend"
+  role                 = "frontend"
+  instance_type        = var.frontend_instance_type
+  subnet_id            = module.vpc.private_app_subnet_ids[1]
+  security_group_ids   = [module.security_groups.frontend_sg_id]
+  key_name             = var.key_name
+  root_volume_size     = 20
+  iam_instance_profile = "SSM"
 
   user_data = templatefile("${path.module}/scripts/frontend.sh", {
     backend_private_ip = module.backend.private_ip
