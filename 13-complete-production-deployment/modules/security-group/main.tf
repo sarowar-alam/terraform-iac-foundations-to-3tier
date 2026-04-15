@@ -4,9 +4,8 @@
 #
 # SG hierarchy:
 #   alb-sg       → receives internet traffic (80, 443)
-#   bastion-sg   → receives SSH from allowed_ssh_cidr only
-#   frontend-sg  → receives 80 from alb-sg, 22 from bastion-sg
-#   backend-sg   → receives 3000 from alb-sg, 22 from bastion-sg
+#   frontend-sg  → receives 80 from alb-sg (SSM replaces SSH)
+#   backend-sg   → receives 3000 from alb-sg (SSM replaces SSH)
 #   rds-sg       → receives 5432 from backend-sg only
 # ==============================================================================
 
@@ -48,35 +47,6 @@ resource "aws_security_group" "alb" {
 }
 
 # ------------------------------------------------------------------------------
-# Bastion Security Group — restricted SSH access
-# ------------------------------------------------------------------------------
-resource "aws_security_group" "bastion" {
-  name        = "${var.project_name}-${var.environment}-bastion-sg"
-  description = "Bastion: SSH only from allowed CIDR"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    description = "SSH from allowed IP only"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.allowed_ssh_cidr]
-  }
-
-  egress {
-    description = "Allow all outbound (to reach private instances)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-bastion-sg"
-  }
-}
-
-# ------------------------------------------------------------------------------
 # Frontend Security Group
 # Phase 1 (basic): 80/443 from 0.0.0.0/0
 # Phase 2 (production): 80 from alb-sg only
@@ -86,15 +56,6 @@ resource "aws_security_group" "frontend" {
   name        = "${var.project_name}-${var.environment}-frontend-sg"
   description = "Frontend EC2: HTTP from ALB (or internet in basic mode)"
   vpc_id      = var.vpc_id
-
-  # SSH from bastion only
-  ingress {
-    description     = "SSH from bastion"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
-  }
 
   # Phase 2 (production): HTTP:80 from ALB SG only
   dynamic "ingress" {
@@ -161,14 +122,6 @@ resource "aws_security_group" "backend" {
       protocol        = "tcp"
       security_groups = [aws_security_group.frontend.id]
     }
-  }
-
-  ingress {
-    description     = "SSH from bastion"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
   }
 
   egress {

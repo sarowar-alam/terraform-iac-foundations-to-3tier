@@ -13,16 +13,6 @@ variable "environment" {
   default = "prod"
 }
 
-variable "key_name" {
-  type    = string
-  default = "sarowar-ostad-mumbai"
-}
-
-variable "allowed_ssh_cidr" {
-  description = "Your IP: x.x.x.x/32"
-  type        = string
-}
-
 variable "frontend_instance_type" {
   type    = string
   default = "t3.medium"

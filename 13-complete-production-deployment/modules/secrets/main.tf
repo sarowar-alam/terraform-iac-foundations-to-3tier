@@ -48,7 +48,8 @@ resource "aws_secretsmanager_secret" "database_url" {
 resource "aws_secretsmanager_secret_version" "database_url" {
   secret_id = aws_secretsmanager_secret.database_url.id
   # Connection string format: postgresql://user:password@host:5432/dbname
-  secret_string = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}:5432/${var.db_name}"
+  # urlencode the password so special chars like #, $, >, [ ] don't break URL parsing in pg-connection-string
+  secret_string = "postgresql://${var.db_username}:${urlencode(var.db_password)}@${var.db_host}:5432/${var.db_name}"
 
   lifecycle {
     ignore_changes = [secret_string]

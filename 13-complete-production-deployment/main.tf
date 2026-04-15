@@ -75,7 +75,6 @@ module "security_groups" {
   project_name           = var.project_name
   environment            = var.environment
   vpc_id                 = module.vpc.vpc_id
-  allowed_ssh_cidr       = var.allowed_ssh_cidr
   frontend_public_access = false # Production: all traffic via ALB
 }
 
@@ -92,6 +91,16 @@ module "iam_backend" {
   attach_cloudwatch_policy = true
 }
 
+module "iam_frontend" {
+  source = "./modules/iam"
+  project_name             = var.project_name
+  environment              = var.environment
+  aws_region               = var.aws_region
+  role_suffix              = "frontend"
+  attach_ssm_policy        = true
+  attach_cloudwatch_policy = false
+}
+
 # ==============================================================================
 # DATABASE PASSWORD
 # Generated at root so both module.rds and module.secrets can receive it
@@ -100,7 +109,7 @@ module "iam_backend" {
 resource "random_password" "db_master" {
   length           = 16
   special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
+  override_special = "!-_=+" # URL-safe only — avoids # $ > [ ] < : ? which break pg connection URLs
   min_upper        = 2
   min_lower        = 2
   min_numeric      = 2
@@ -138,16 +147,6 @@ module "secrets" {
 # ==============================================================================
 # COMPUTE â€” Bastion, Backend, Frontend
 # ==============================================================================
-module "bastion" {
-  source = "./modules/ec2"
-  name               = "${var.project_name}-${var.environment}-bastion"
-  role               = "bastion"
-  instance_type      = "t3.micro"
-  subnet_id          = module.vpc.public_subnet_ids[0]
-  security_group_ids = [module.security_groups.bastion_sg_id]
-  key_name           = var.key_name
-}
-
 module "backend" {
   source = "./modules/ec2"
   name                 = "${var.project_name}-${var.environment}-backend"
@@ -155,7 +154,7 @@ module "backend" {
   instance_type        = var.backend_instance_type
   subnet_id            = module.vpc.private_app_subnet_ids[0]
   security_group_ids   = [module.security_groups.backend_sg_id]
-  key_name             = var.key_name
+  key_name             = null
   iam_instance_profile = module.iam_backend.instance_profile_name
   root_volume_size     = 20
 
@@ -176,9 +175,9 @@ module "frontend" {
   instance_type        = var.frontend_instance_type
   subnet_id            = module.vpc.private_app_subnet_ids[1]
   security_group_ids   = [module.security_groups.frontend_sg_id]
-  key_name             = var.key_name
+  key_name             = null
   root_volume_size     = 20
-  iam_instance_profile = "SSM"
+  iam_instance_profile = module.iam_frontend.instance_profile_name
 
   user_data = templatefile("${path.module}/scripts/frontend.sh", {
     backend_private_ip = module.backend.private_ip

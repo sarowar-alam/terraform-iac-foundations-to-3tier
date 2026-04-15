@@ -3,11 +3,6 @@ output "alb_sg_id" {
   value       = aws_security_group.alb.id
 }
 
-output "bastion_sg_id" {
-  description = "Security Group ID for the Bastion Host"
-  value       = aws_security_group.bastion.id
-}
-
 output "frontend_sg_id" {
   description = "Security Group ID for the Frontend EC2"
   value       = aws_security_group.frontend.id

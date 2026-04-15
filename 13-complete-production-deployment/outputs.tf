@@ -16,20 +16,14 @@ output "alb_dns_name" {
 }
 
 # ============================================================
-# SSH ACCESS
+# SSM ACCESS (replaces SSH/bastion)
 # ============================================================
-output "bastion_public_ip" { value = module.bastion.public_ip }
-
-output "ssh_bastion" {
-  value = "ssh -i sarowar-ostad-mumbai.pem ubuntu@${module.bastion.public_ip}"
+output "ssm_frontend" {
+  value = "aws ssm start-session --target ${module.frontend.instance_id} --region ${var.aws_region} --profile sarowar-ostad"
 }
 
-output "ssh_frontend_via_bastion" {
-  value = "ssh -i sarowar-ostad-mumbai.pem -J ubuntu@${module.bastion.public_ip} ubuntu@${module.frontend.private_ip}"
-}
-
-output "ssh_backend_via_bastion" {
-  value = "ssh -i sarowar-ostad-mumbai.pem -J ubuntu@${module.bastion.public_ip} ubuntu@${module.backend.private_ip}"
+output "ssm_backend" {
+  value = "aws ssm start-session --target ${module.backend.instance_id} --region ${var.aws_region} --profile sarowar-ostad"
 }
 
 # ============================================================
@@ -56,7 +50,7 @@ output "verify_steps" {
     "2_api_check"     = "curl https://${var.domain_name}/api/measurements"
     "3_open_browser"  = "https://${var.domain_name}"
     "4_check_secret"  = "aws secretsmanager get-secret-value --secret-id ${module.secrets.database_url_secret_name} --region ${var.aws_region} --query SecretString --output text"
-    "5_backend_logs"  = "ssh -J ubuntu@${module.bastion.public_ip} ubuntu@${module.backend.private_ip} 'sudo tail -f /var/log/user-data.log'"
+    "5_backend_logs"  = "aws ssm start-session --target ${module.backend.instance_id} --region ${var.aws_region} --profile sarowar-ostad"
   }
 }
 

@@ -25,9 +25,11 @@ AWS_REGION="${aws_region}"
 # ------------------------------------------------------------------------------
 # System update + dependencies
 # ------------------------------------------------------------------------------
-apt-get update -y
-apt-get upgrade -y
-apt-get install -y curl git unzip software-properties-common
+echo "[INFO] Updating system packages..."
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq curl git unzip software-properties-common
+echo "[SUCCESS] Base packages installed"
 
 # AWS CLI v2 — for Secrets Manager calls
 if ! command -v aws &>/dev/null; then
@@ -38,14 +40,18 @@ if ! command -v aws &>/dev/null; then
 fi
 
 # Node.js 18
+echo "[INFO] Installing Node.js 18..."
 curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-apt-get install -y nodejs
+apt-get install -y -qq nodejs
+echo "[SUCCESS] Node.js $(node -v) / npm $(npm -v) installed"
 
 # PM2 — process manager
 npm install -g pm2
 
 # PostgreSQL client — for running migrations
-apt-get install -y postgresql-client-14 || apt-get install -y postgresql-client
+echo "[INFO] Installing PostgreSQL client..."
+apt-get install -y -qq postgresql-client-14 || apt-get install -y -qq postgresql-client
+echo "[SUCCESS] PostgreSQL client installed"
 
 # ------------------------------------------------------------------------------
 # Fetch DATABASE_URL from AWS Secrets Manager
@@ -68,9 +74,16 @@ echo "Database URL retrieved successfully."
 # ------------------------------------------------------------------------------
 # Clone repository
 # ------------------------------------------------------------------------------
+echo "[INFO] Cloning application repository..."
 APP_DIR="/home/ubuntu/bmi-health-tracker"
-git clone https://github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
+if [ -d "$APP_DIR/.git" ]; then
+  echo "[INFO] Repo already exists, pulling latest..."
+  git -C "$APP_DIR" pull
+else
+  git clone https://github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
+fi
 chown -R ubuntu:ubuntu "$APP_DIR"
+echo "[SUCCESS] Repository ready"
 
 # ------------------------------------------------------------------------------
 # Install backend dependencies
