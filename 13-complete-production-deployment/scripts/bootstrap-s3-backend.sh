@@ -13,7 +13,7 @@ set -e
 
 BUCKET="terraform-state-bmi-ostaddevops"
 REGION="ap-south-1"
-PROFILE="sarowar-ostad"
+NAMED_PROFILE="sarowar-ostad"
 
 # Parse arguments
 MODE="bootstrap"
@@ -23,6 +23,25 @@ for arg in "$@"; do
     *) echo "Unknown argument: $arg"; echo "Usage: $0 [--teardown]"; exit 1 ;;
   esac
 done
+
+# ------------------------------------------------------------------------------
+# Detect credentials: try default (EC2 instance role) first,
+# fall back to named profile if default fails.
+# ------------------------------------------------------------------------------
+echo "Detecting AWS credentials..."
+if aws sts get-caller-identity --output text > /dev/null 2>&1; then
+  AWS_OPTS=""
+  echo "  [OK] Using default credentials (EC2 instance role / env vars)."
+elif aws sts get-caller-identity --profile "$NAMED_PROFILE" --output text > /dev/null 2>&1; then
+  AWS_OPTS="--profile $NAMED_PROFILE"
+  echo "  [OK] Using named profile: $NAMED_PROFILE"
+else
+  echo "  [ERROR] No valid AWS credentials found."
+  echo "          Tried: default chain, then --profile $NAMED_PROFILE"
+  echo "          On EC2: attach an IAM role to the instance."
+  echo "          Locally: run 'aws configure --profile $NAMED_PROFILE'"
+  exit 1
+fi
 
 # ==============================================================================
 # TEARDOWN — delete all object versions, delete markers, then the bucket
@@ -36,7 +55,7 @@ if [ "$MODE" = "teardown" ]; then
   echo ""
 
   # Check bucket exists first
-  if ! aws s3api head-bucket --bucket "$BUCKET" --profile "$PROFILE" 2>/dev/null; then
+  if ! aws s3api head-bucket --bucket "$BUCKET" $AWS_OPTS 2>/dev/null; then
     echo "  [SKIP] Bucket '$BUCKET' does not exist — nothing to delete."
     exit 0
   fi
@@ -57,7 +76,7 @@ if [ "$MODE" = "teardown" ]; then
   echo "[1/3] Deleting all object versions..."
   VERSIONS=$(aws s3api list-object-versions \
     --bucket "$BUCKET" \
-    --profile "$PROFILE" \
+    $AWS_OPTS \
     --query 'Versions[].{Key:Key,VersionId:VersionId}' \
     --output json 2>/dev/null)
 
@@ -69,7 +88,7 @@ if [ "$MODE" = "teardown" ]; then
         aws s3api delete-objects \
           --bucket "$BUCKET" \
           --delete "$BATCH" \
-          --profile "$PROFILE" > /dev/null
+          $AWS_OPTS > /dev/null
       done
     echo "  [OK] All object versions deleted."
   else
@@ -83,7 +102,7 @@ if [ "$MODE" = "teardown" ]; then
   echo "[2/3] Deleting all delete markers..."
   MARKERS=$(aws s3api list-object-versions \
     --bucket "$BUCKET" \
-    --profile "$PROFILE" \
+    $AWS_OPTS \
     --query 'DeleteMarkers[].{Key:Key,VersionId:VersionId}' \
     --output json 2>/dev/null)
 
@@ -95,7 +114,7 @@ if [ "$MODE" = "teardown" ]; then
         aws s3api delete-objects \
           --bucket "$BUCKET" \
           --delete "$BATCH" \
-          --profile "$PROFILE" > /dev/null
+          $AWS_OPTS > /dev/null
       done
     echo "  [OK] All delete markers removed."
   else
@@ -110,7 +129,7 @@ if [ "$MODE" = "teardown" ]; then
   aws s3api delete-bucket \
     --bucket "$BUCKET" \
     --region "$REGION" \
-    --profile "$PROFILE"
+    $AWS_OPTS
   echo "  [OK] Bucket '$BUCKET' deleted."
 
   echo ""
@@ -125,7 +144,7 @@ echo "=============================================="
 echo " Terraform S3 Backend Bootstrap"
 echo " Bucket : $BUCKET"
 echo " Region : $REGION"
-echo " Profile: $PROFILE"
+echo " Credentials: $CRED_SOURCE"
 echo "=============================================="
 
 # ------------------------------------------------------------------------------
@@ -133,7 +152,7 @@ echo "=============================================="
 # ------------------------------------------------------------------------------
 echo ""
 echo "[1/4] Checking if bucket exists..."
-if aws s3api head-bucket --bucket "$BUCKET" --profile "$PROFILE" 2>/dev/null; then
+if aws s3api head-bucket --bucket "$BUCKET" $AWS_OPTS 2>/dev/null; then
   echo "  [SKIP] Bucket '$BUCKET' already exists."
 else
   echo "  [CREATE] Bucket not found — creating..."
@@ -141,7 +160,7 @@ else
     --bucket "$BUCKET" \
     --region "$REGION" \
     --create-bucket-configuration LocationConstraint="$REGION" \
-    --profile "$PROFILE"
+    $AWS_OPTS
   echo "  [OK] Bucket created."
 fi
 
@@ -152,7 +171,7 @@ echo ""
 echo "[2/4] Checking versioning..."
 VERSIONING_STATUS=$(aws s3api get-bucket-versioning \
   --bucket "$BUCKET" \
-  --profile "$PROFILE" \
+  $AWS_OPTS \
   --query "Status" \
   --output text 2>/dev/null || echo "None")
 
@@ -163,7 +182,7 @@ else
   aws s3api put-bucket-versioning \
     --bucket "$BUCKET" \
     --versioning-configuration Status=Enabled \
-    --profile "$PROFILE"
+    $AWS_OPTS
   echo "  [OK] Versioning enabled."
 fi
 
@@ -174,7 +193,7 @@ echo ""
 echo "[3/4] Checking encryption..."
 ENCRYPTION=$(aws s3api get-bucket-encryption \
   --bucket "$BUCKET" \
-  --profile "$PROFILE" \
+  $AWS_OPTS \
   --query "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm" \
   --output text 2>/dev/null || echo "None")
 
@@ -186,7 +205,7 @@ else
     --bucket "$BUCKET" \
     --server-side-encryption-configuration \
       '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' \
-    --profile "$PROFILE"
+    $AWS_OPTS
   echo "  [OK] AES256 encryption enabled."
 fi
 
@@ -197,7 +216,7 @@ echo ""
 echo "[4/4] Checking public access block..."
 PUBLIC_BLOCK=$(aws s3api get-public-access-block \
   --bucket "$BUCKET" \
-  --profile "$PROFILE" \
+  $AWS_OPTS \
   --query "PublicAccessBlockConfiguration.BlockPublicAcls" \
   --output text 2>/dev/null || echo "None")
 
@@ -209,7 +228,7 @@ else
     --bucket "$BUCKET" \
     --public-access-block-configuration \
       "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" \
-    --profile "$PROFILE"
+    $AWS_OPTS
   echo "  [OK] Public access blocked."
 fi
 
@@ -223,18 +242,18 @@ echo "=============================================="
 echo ""
 printf "  %-28s" "Versioning:"
 aws s3api get-bucket-versioning \
-  --bucket "$BUCKET" --profile "$PROFILE" \
+  --bucket "$BUCKET" $AWS_OPTS \
   --query "Status" --output text
 
 printf "  %-28s" "Encryption:"
 aws s3api get-bucket-encryption \
-  --bucket "$BUCKET" --profile "$PROFILE" \
+  --bucket "$BUCKET" $AWS_OPTS \
   --query "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm" \
   --output text
 
 printf "  %-28s" "BlockPublicAcls:"
 aws s3api get-public-access-block \
-  --bucket "$BUCKET" --profile "$PROFILE" \
+  --bucket "$BUCKET" $AWS_OPTS \
   --query "PublicAccessBlockConfiguration.BlockPublicAcls" \
   --output text
 
