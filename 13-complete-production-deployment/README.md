@@ -32,10 +32,6 @@ Application Load Balancer  ←─── Public Subnets (10.0.1.0/24, 10.0.2.0/24
     └── /*      →  Frontend Target Group →  Frontend EC2 :80   [Private-App]
                                               └── Nginx serves React /dist
 
-Bastion EC2  [Public Subnet]  ─── SSH from YOUR_IP/32 only
-    └── ProxyJump → Backend
-    └── ProxyJump → Frontend
-
 RDS PostgreSQL 14  [Private-DB Subnets, Multi-AZ]
     └── db.t3.medium, gp3, encrypted, no public access
 
@@ -46,8 +42,12 @@ Secrets Manager:
     ├── /production/bmi-health-tracker/db-password
     └── /production/bmi-health-tracker/database-url
 
-S3 Remote State:
-    └── terraform-state-bmi-ostaddevops/prod/terraform.tfstate
+Access (no SSH — SSM Session Manager replaces bastion):
+    ├── aws ssm start-session --target <backend-id>  --region ap-south-1
+    └── aws ssm start-session --target <frontend-id> --region ap-south-1
+
+S3 Remote State (no DynamoDB lock):
+    └── terraform-state-bmi-ostaddevops/prod/13-complete-production-deployment/terraform.tfstate
 ```
 
 ---
@@ -56,22 +56,22 @@ S3 Remote State:
 
 ```
 13-complete-production-deployment/
-├── main.tf                  ← all 7 modules orchestrated (with commented S3 backend)
-├── variables.tf             ← all configurable parameters
-├── outputs.tf               ← verify_steps map, app_url, ssh_command, destroy_reminder
-├── terraform.tfvars.example ← copy → terraform.tfvars
+├── main.tf                  ← all 7 modules orchestrated, S3 backend active (no DynamoDB)
+├── variables.tf             ← all configurable parameters (all have defaults)
+├── outputs.tf               ← verify_steps map, app_url, ssm_backend, ssm_frontend
 ├── README.md                ← this file
 ├── modules/
 │   ├── vpc/                 ← VPC + 6 subnets + IGW + NAT GW
-│   ├── security-group/      ← 5 SGs, Phase 2 rules (frontend_public_access=false)
-│   ├── iam/                 ← Least-privilege role for backend EC2
+│   ├── security-group/      ← 4 SGs, Phase 2 rules (frontend_public_access=false)
+│   ├── iam/                 ← Least-privilege role + SSM access for backend & frontend
 │   ├── rds/                 ← PostgreSQL 14, multi_az=true, db.t3.medium
 │   ├── secrets/             ← random_password → Secrets Manager
-│   ├── ec2/                 ← Used for bastion, backend, frontend
+│   ├── ec2/                 ← Used for backend and frontend (no bastion — SSM replaces SSH)
 │   └── alb/                 ← ALB + TGs + HTTPS + Route53 A record
 └── scripts/
-    ├── backend.sh           ← Node.js + PM2 bootstrap
-    └── frontend.sh          ← Nginx + React build (phase=production)
+    ├── backend.sh               ← Node.js + PM2 bootstrap (EC2 user-data)
+    ├── frontend.sh              ← Nginx + React build, phase=production (EC2 user-data)
+    └── bootstrap-s3-backend.sh  ← create / teardown the S3 remote state bucket
 ```
 
 ---
@@ -79,49 +79,69 @@ S3 Remote State:
 ## Prerequisites
 
 - All previous lessons (01-12) completed or understood
-- AWS CLI configured
-- (Optional) Bootstrap state bucket exists: run `03-state-management/bootstrap/` first
+- Terraform >= 1.5.0 installed (`terraform version`)
+- AWS CLI v2 installed (`aws --version`)
+- AWS profile `sarowar-ostad` configured (`aws configure --profile sarowar-ostad`)
+- `jq` installed — required by the teardown path of the bootstrap script (`apt install jq` / `brew install jq`)
+- ACM certificate `arn:aws:acm:ap-south-1:388779989543:certificate/c5e5f2a5-...` must be in **ISSUED** state
+- Route53 hosted zone `Z1019653XLWIJ02C53P5` for `ostaddevops.click` must exist
+- GitHub repo `sarowar-alam/terraform-iac-foundations-to-3tier` must be **public** and contain:
+  - `backend/ecosystem.config.js`
+  - `backend/migrations/*.sql`
+  - `frontend/package.json` with `"build"` script that outputs to `frontend/dist/`
 
 ---
 
 ## Step-by-Step Deployment
 
-### Step 1: Configure Variables
+### Step 1: Verify Variables
 
+All variables have defaults set in `variables.tf` — no `terraform.tfvars` file is required.
+The key defaults are:
+
+| Variable | Default |
+|----------|---------|
+| `aws_region` | `ap-south-1` |
+| `project_name` | `bmi-health-tracker` |
+| `environment` | `prod` |
+| `frontend_instance_type` | `t3.medium` |
+| `backend_instance_type` | `t3.large` |
+| `db_instance_class` | `db.t3.medium` |
+| `multi_az` | `true` |
+| `certificate_arn` | pre-set to the class ACM cert |
+| `hosted_zone_id` | pre-set to the class Route53 zone |
+| `domain_name` | `bmi.ostaddevops.click` |
+
+To override any value, create a `terraform.tfvars` file:
+```hcl
+# terraform.tfvars  (optional overrides only)
+frontend_instance_type = "t3.small"   # downsize for cost
+backend_instance_type  = "t3.medium"
+```
+
+### Step 2: Bootstrap the S3 Remote State Bucket
+
+The S3 backend is **already active** in `main.tf` (no DynamoDB lock — S3-only).
+You must create the bucket before `terraform init` will succeed.
+
+Run the idempotent bootstrap script (safe to run multiple times — skips what already exists):
 ```bash
-cp terraform.tfvars.example terraform.tfvars
+bash scripts/bootstrap-s3-backend.sh
 ```
 
-Edit `terraform.tfvars`:
-```hcl
-aws_region              = "ap-south-1"
-project_name            = "bmi-health-tracker"
-environment             = "production"
-key_name                = "sarowar-ostad-mumbai"
-allowed_ssh_cidr        = "YOUR_IP/32"   # curl ifconfig.me
-frontend_instance_type  = "t3.medium"
-backend_instance_type   = "t3.large"
-db_instance_class       = "db.t3.medium"
+The script checks and configures:
+- Bucket creation (`terraform-state-bmi-ostaddevops`, region `ap-south-1`)
+- Versioning → **Enabled**
+- Server-side encryption → **AES256**
+- Public access block → **all four flags true**
 
-# Pre-provisioned — do not change
-certificate_arn = "arn:aws:acm:ap-south-1:388779989543:certificate/c5e5f2a5-c678-4799-b355-765c13584fe0"
-hosted_zone_id  = "Z1019653XLWIJ02C53P5"
-domain_name     = "bmi.ostaddevops.click"
+Expected final output:
+```
+[DONE] Bucket 'terraform-state-bmi-ostaddevops' is ready.
+       Next: terraform init
 ```
 
-### Step 2: (Optional) Enable Remote State
-
-Open `main.tf` and uncomment the `backend "s3"` block (requires bootstrap to run first):
-```hcl
-backend "s3" {
-  bucket         = "terraform-state-bmi-ostaddevops"
-  key            = "prod/terraform.tfstate"
-  region         = "ap-south-1"
-  dynamodb_table = "terraform-state-lock"
-  encrypt        = true
-}
-```
-Then run `terraform init` again and confirm state migration.
+> To delete the bucket at teardown time, see Step 8.
 
 ### Step 3: Review the Plan
 
@@ -196,42 +216,72 @@ echo "Open: https://bmi.ostaddevops.click"
 # All resources in state
 terraform state list | sort
 
-# ALB target health (should show "healthy")
+# ALB target health — both backend and frontend must show "healthy"
 aws elbv2 describe-target-health \
-  --target-group-arn $(terraform output -raw frontend_tg_arn) \
+  --target-group-arn $(terraform output -raw alb_dns_name) \
   --query "TargetHealthDescriptions[].{Target:Target.Id,Health:TargetHealth.State}" \
   --output table
 
 # RDS multi-AZ status
 aws rds describe-db-instances \
   --query "DBInstances[?DBName=='bmidb'].{ID:DBInstanceIdentifier,MultiAZ:MultiAZ,Status:DBInstanceStatus}" \
+  --region ap-south-1 \
+  --profile sarowar-ostad \
   --output table
 
 # Secrets created
 aws secretsmanager list-secrets \
-  --filter Key=name,Values=/production/bmi-health-tracker/ \
+  --filter Key=name,Values=/prod/bmi-health-tracker/ \
   --query "SecretList[].Name" \
+  --region ap-south-1 \
+  --profile sarowar-ostad \
   --output table
+```
+
+**Access EC2 instances via SSM Session Manager (no SSH key or bastion needed):**
+```bash
+# Copy the exact command from terraform output:
+terraform output ssm_backend
+terraform output ssm_frontend
+
+# Then run the printed command, e.g.:
+aws ssm start-session --target i-0abc1234 --region ap-south-1 --profile sarowar-ostad
+
+# Inside the session — check bootstrap log:
+sudo tail -100 /var/log/user-data.log
+
+# Check PM2 (backend only):
+pm2 status
+pm2 logs --lines 50
 ```
 
 ### Step 8: Destroy After Class
 
+**Part A — Destroy all AWS infrastructure:**
 ```bash
 terraform destroy
+# Type "yes" to confirm
+# Teardown time: ~10-15 min (RDS deletion takes longest)
 ```
 
-Type `yes` to confirm. Teardown time: ~10-15 min (RDS deletion takes longest).
-
+Verify everything is gone:
 ```bash
-# Verify everything is destroyed
 terraform state list
 # Expected: (empty)
 
 aws ec2 describe-instances \
-  --filters "Name=tag:Environment,Values=production" "Name=instance-state-name,Values=running" \
+  --filters "Name=tag:Environment,Values=prod" "Name=instance-state-name,Values=running" \
   --query "Reservations[].Instances[].InstanceId" \
+  --region ap-south-1 --profile sarowar-ostad \
   --output text
 # Expected: (empty)
+```
+
+**Part B — Delete the S3 state bucket (versioning requires purging all versions first):**
+```bash
+bash scripts/bootstrap-s3-backend.sh --teardown
+# Prompts you to type the bucket name to confirm
+# Deletes: all object versions → all delete markers → bucket
 ```
 
 ---
@@ -242,12 +292,13 @@ aws ec2 describe-instances \
 main.tf
   ├── module.vpc              → modules/vpc/
   ├── module.security_groups  → modules/security-group/  (uses module.vpc.vpc_id)
-  ├── module.iam_backend      → modules/iam/
+  ├── module.iam_backend      → modules/iam/             (role_suffix="backend", SSM+CloudWatch)
+  ├── module.iam_frontend     → modules/iam/             (role_suffix="frontend", SSM only)
+  ├── resource.random_password.db_master                 (root-level, breaks RDS↔Secrets cycle)
   ├── module.rds              → modules/rds/              (uses module.vpc.private_db_subnet_ids)
-  ├── module.secrets          → modules/secrets/          (uses module.rds.db_host)
-  ├── module.bastion          → modules/ec2/              (uses module.vpc.public_subnet_ids[0])
+  ├── module.secrets          → modules/secrets/          (uses module.rds.db_host + random_password)
   ├── module.backend          → modules/ec2/              (uses module.secrets, module.iam_backend)
-  ├── module.frontend         → modules/ec2/              (uses module.backend.private_ip)
+  ├── module.frontend         → modules/ec2/              (uses module.backend.private_ip, module.iam_frontend)
   └── module.alb              → modules/alb/              (uses module.frontend, module.backend, module.vpc)
 ```
 
@@ -255,8 +306,8 @@ main.tf
 ```
 vpc → security_groups
 vpc → rds → secrets
-vpc + secrets → backend
-backend → frontend
+vpc + secrets + iam_backend → backend
+backend + iam_frontend → frontend
 vpc + frontend + backend + security_groups → alb
 ```
 
@@ -282,11 +333,13 @@ A 2-hour class costs ~$0.66. Always run `terraform destroy` after.
 
 | Problem | Check | Fix |
 |---------|-------|-----|
-| ALB health checks failing | `/var/log/user-data.log` on EC2 | Wait 5 more min; check PM2 status |
-| 502 Bad Gateway | Backend not running | SSH to backend, check `pm2 status` |
-| `https://` shows cert error | ACM cert validation | Certificate ARN must match domain |
-| `curl: (6) Could not resolve host` | Route53 propagation | Wait 1-2 min; try `nslookup` |
-| RDS connection refused | user_data still running | Wait for `cloud-init status: done` |
+| ALB health checks failing | `sudo tail -f /var/log/user-data.log` via SSM | Wait 5 more min; check bootstrap completed |
+| 502 Bad Gateway | Backend PM2 not running | SSM into backend: `pm2 status && pm2 logs --lines 50` |
+| `https://` shows cert error | ACM cert status | Run `aws acm describe-certificate --certificate-arn <arn> --query Certificate.Status` — must be `ISSUED` |
+| `curl: (6) Could not resolve host` | Route53 propagation delay | Wait 2 min; try `nslookup bmi.ostaddevops.click 8.8.8.8` |
+| RDS connection refused | user-data still running | Wait; SSM into backend and check `/var/log/user-data.log` for migration completion |
+| SSM session fails | SSM agent not running / IAM issue | Verify IAM role has `AmazonSSMManagedInstanceCore` attached |
+| `bootstrap-s3-backend.sh --teardown` hangs | Many versions to delete | Normal — wait; or run with `set -x` to watch progress |
 
 ---
 

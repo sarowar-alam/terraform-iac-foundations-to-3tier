@@ -1,0 +1,222 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+
+    {
+      "Sid": "S3TerraformState",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:GetBucketVersioning",
+        "s3:GetEncryptionConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::terraform-state-bmi-ostaddevops",
+        "arn:aws:s3:::terraform-state-bmi-ostaddevops/*"
+      ]
+    },
+
+    {
+      "Sid": "EC2AndVPC",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "ec2:CreateVpc",
+        "ec2:DeleteVpc",
+        "ec2:ModifyVpcAttribute",
+        "ec2:CreateSubnet",
+        "ec2:DeleteSubnet",
+        "ec2:ModifySubnetAttribute",
+        "ec2:CreateInternetGateway",
+        "ec2:DeleteInternetGateway",
+        "ec2:AttachInternetGateway",
+        "ec2:DetachInternetGateway",
+        "ec2:AllocateAddress",
+        "ec2:ReleaseAddress",
+        "ec2:CreateNatGateway",
+        "ec2:DeleteNatGateway",
+        "ec2:CreateRouteTable",
+        "ec2:DeleteRouteTable",
+        "ec2:CreateRoute",
+        "ec2:DeleteRoute",
+        "ec2:AssociateRouteTable",
+        "ec2:DisassociateRouteTable",
+        "ec2:ReplaceRouteTableAssociation",
+        "ec2:CreateSecurityGroup",
+        "ec2:DeleteSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+        "ec2:RunInstances",
+        "ec2:TerminateInstances",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": "*"
+    },
+
+    {
+      "Sid": "IAMProjectRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:ListInstanceProfilesForRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:TagInstanceProfile",
+        "iam:UntagInstanceProfile"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/bmi-health-tracker-prod-*",
+        "arn:aws:iam::*:instance-profile/bmi-health-tracker-prod-*"
+      ]
+    },
+
+    {
+      "Sid": "IAMPassRoleToEC2Only",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:role/bmi-health-tracker-prod-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ec2.amazonaws.com"
+        }
+      }
+    },
+
+    {
+      "Sid": "RDS",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBInstance",
+        "rds:DeleteDBInstance",
+        "rds:DescribeDBInstances",
+        "rds:ModifyDBInstance",
+        "rds:CreateDBSubnetGroup",
+        "rds:DeleteDBSubnetGroup",
+        "rds:DescribeDBSubnetGroups",
+        "rds:ModifyDBSubnetGroup",
+        "rds:CreateDBParameterGroup",
+        "rds:DeleteDBParameterGroup",
+        "rds:DescribeDBParameterGroups",
+        "rds:ModifyDBParameterGroup",
+        "rds:ResetDBParameterGroup",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:ListTagsForResource",
+        "rds:DescribeDBEngineVersions",
+        "rds:DescribeOrderableDBInstanceOptions"
+      ],
+      "Resource": "*"
+    },
+
+    {
+      "Sid": "SecretsManager",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:RestoreSecret",
+        "secretsmanager:TagResource",
+        "secretsmanager:UntagResource",
+        "secretsmanager:ListSecrets"
+      ],
+      "Resource": "*"
+    },
+
+    {
+      "Sid": "ALB",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:SetSecurityGroups",
+        "elasticloadbalancing:SetSubnets",
+        "elasticloadbalancing:CreateTargetGroup",
+        "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:RegisterTargets",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:CreateListener",
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:ModifyListener",
+        "elasticloadbalancing:CreateRule",
+        "elasticloadbalancing:DeleteRule",
+        "elasticloadbalancing:DescribeRules",
+        "elasticloadbalancing:ModifyRule",
+        "elasticloadbalancing:SetRulePriorities",
+        "elasticloadbalancing:AddTags",
+        "elasticloadbalancing:RemoveTags",
+        "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:DescribeListenerCertificates",
+        "elasticloadbalancing:DescribeSSLPolicies"
+      ],
+      "Resource": "*"
+    },
+
+    {
+      "Sid": "Route53",
+      "Effect": "Allow",
+      "Action": [
+        "route53:ChangeResourceRecordSets",
+        "route53:ListResourceRecordSets",
+        "route53:GetHostedZone",
+        "route53:ListHostedZones",
+        "route53:GetChange"
+      ],
+      "Resource": "*"
+    },
+
+    {
+      "Sid": "ACMReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "acm:DescribeCertificate",
+        "acm:ListCertificates",
+        "acm:GetCertificate"
+      ],
+      "Resource": "*"
+    },
+
+    {
+      "Sid": "STSCallerIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    }
+
+  ]
+}

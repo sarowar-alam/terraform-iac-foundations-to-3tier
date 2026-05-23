@@ -31,12 +31,11 @@ terraform {
 
   # Remote state â€” uncomment after running make bootstrap
   backend "s3" {
-    bucket         = "terraform-state-bmi-ostaddevops"
-    key            = "prod/13-complete-production-deployment/terraform.tfstate"
-    region         = "ap-south-1"
-    dynamodb_table = "terraform-state-lock"
-    encrypt        = true
-    profile        = "sarowar-ostad"
+    bucket  = "terraform-state-bmi-ostaddevops"
+    key     = "prod/13-complete-production-deployment/terraform.tfstate"
+    region  = "ap-south-1"
+    encrypt = true
+    profile = "sarowar-ostad"
   }
 }
 
