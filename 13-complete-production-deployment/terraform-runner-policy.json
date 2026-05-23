@@ -127,6 +127,7 @@
         "rds:ModifyDBSubnetGroup",
         "rds:CreateDBParameterGroup",
         "rds:DeleteDBParameterGroup",
+        "rds:DescribeDBParameters",
         "rds:DescribeDBParameterGroups",
         "rds:ModifyDBParameterGroup",
         "rds:ResetDBParameterGroup",
@@ -152,7 +153,8 @@
         "secretsmanager:RestoreSecret",
         "secretsmanager:TagResource",
         "secretsmanager:UntagResource",
-        "secretsmanager:ListSecrets"
+        "secretsmanager:ListSecrets",
+        "secretsmanager:GetResourcePolicy"
       ],
       "Resource": "*"
     },

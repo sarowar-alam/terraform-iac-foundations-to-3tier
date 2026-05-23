@@ -35,11 +35,14 @@ terraform {
     key     = "prod/13-complete-production-deployment/terraform.tfstate"
     region  = "ap-south-1"
     encrypt = true
+    # profile omitted — uses default credential chain (EC2 instance role, env vars)
+    # override locally: terraform init -backend-config="profile=sarowar-ostad"
   }
 }
 
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
+  profile = var.aws_profile # null = EC2 instance role / env vars; set "sarowar-ostad" locally
   default_tags {
     tags = {
       Project     = var.project_name

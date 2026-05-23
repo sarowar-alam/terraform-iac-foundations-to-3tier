@@ -3,6 +3,12 @@ variable "aws_region" {
   default = "ap-south-1"
 }
 
+variable "aws_profile" {
+  type    = string
+  default = null # null = default credential chain (EC2 instance role, env vars)
+                 # set to "sarowar-ostad" when running locally
+}
+
 variable "project_name" {
   type    = string
   default = "bmi-health-tracker"
