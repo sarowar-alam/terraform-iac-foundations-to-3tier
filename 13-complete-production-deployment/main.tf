@@ -35,13 +35,11 @@ terraform {
     key     = "prod/13-complete-production-deployment/terraform.tfstate"
     region  = "ap-south-1"
     encrypt = true
-    profile = "sarowar-ostad"
   }
 }
 
 provider "aws" {
   region = var.aws_region
-  profile        = "sarowar-ostad"
   default_tags {
     tags = {
       Project     = var.project_name
