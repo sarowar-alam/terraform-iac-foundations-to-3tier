@@ -16,6 +16,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  profile = "sarowar-ostad"
 
   default_tags {
     tags = local.common_tags

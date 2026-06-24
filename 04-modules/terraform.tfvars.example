@@ -4,6 +4,8 @@
 aws_region       = "ap-south-1"
 project_name     = "bmi-health-tracker"
 environment      = "dev"
-instance_type    = "t2.micro"
+instance_type    = "t3.micro"
 key_name         = "sarowar-ostad-mumbai"
-allowed_ssh_cidr = "YOUR_IP/32"   # run: curl ifconfig.me
+allowed_ssh_cidr = "182.163.107.50/32"   # run: curl ifconfig.me
+subnet_id        = "subnet-0596d18a27a91b24e"
+vpc_id           = "vpc-0be847e2ada314b52"

@@ -4,5 +4,5 @@ environment      = "dev"
 instance_type    = "t3.medium"
 key_name         = "sarowar-ostad-mumbai"
 allowed_ssh_cidr = "182.163.107.50/32"   # run: curl ifconfig.me
-subnet_id        = "subnet-0b63bd17c9fc71afe"
-vpc_id = "vpc-057236bf8e20608a1"   # replace with your actual VPC ID
+subnet_id        = "subnet-0596d18a27a91b24e"
+vpc_id           = "vpc-0be847e2ada314b52"   # replace with your actual VPC ID

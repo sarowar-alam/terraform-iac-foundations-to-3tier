@@ -27,7 +27,8 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
+  profile = "sarowar-ostad"
   default_tags {
     tags = {
       Project     = var.project_name
@@ -35,6 +36,17 @@ provider "aws" {
       ManagedBy   = "terraform"
     }
   }
+}
+
+# Generate DB password at root level — passed to both rds and secrets modules
+resource "random_password" "db" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+  min_upper        = 2
+  min_lower        = 2
+  min_numeric      = 2
+  min_special      = 2
 }
 
 # VPC + all subnets
@@ -70,7 +82,7 @@ module "rds" {
   environment       = var.environment
   subnet_ids        = module.vpc.private_db_subnet_ids
   security_group_id = module.security_groups.rds_sg_id
-  db_password       = module.secrets.db_password
+  db_password       = random_password.db.result
   instance_class    = var.db_instance_class
   multi_az          = false
   skip_final_snapshot = true
@@ -82,7 +94,7 @@ module "secrets" {
   project_name = var.project_name
   environment  = var.environment
   db_host      = module.rds.db_host
-  depends_on   = [module.rds]
+  db_password  = random_password.db.result
 }
 
 # Bastion host â€” SSH jump server in public subnet
@@ -109,7 +121,7 @@ module "backend" {
 
   user_data = templatefile("${path.module}/scripts/backend.sh", {
     database_url_secret_name = module.secrets.database_url_secret_name
-    frontend_url             = "http://${module.frontend.public_ip}"
+    frontend_url             = "*"
     environment              = var.environment
     aws_region               = var.aws_region
   })

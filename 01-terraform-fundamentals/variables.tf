@@ -26,3 +26,10 @@ variable "subnet_id" {
   description = "ID of the public subnet to launch the instance into"
   type        = string
 }
+
+
+variable "aws_profile" {
+  description = "AWS CLI profile name"
+  type        = string
+  default     = "sarowar-ostad"
+}

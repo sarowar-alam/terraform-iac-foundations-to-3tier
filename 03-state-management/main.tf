@@ -19,11 +19,13 @@ terraform {
     region         = "ap-south-1"
     dynamodb_table = "terraform-state-lock"
     encrypt        = true
+    profile        = "sarowar-ostad"  # Using your AWS profile
   }
 }
 
 provider "aws" {
   region = var.aws_region
+  profile = "sarowar-ostad"  # Using your AWS profile
 }
 
 data "aws_ami" "ubuntu" {

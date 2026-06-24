@@ -16,6 +16,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  profile = "sarowar-ostad"
 }
 
 # Call the local webserver module
@@ -24,6 +25,19 @@ module "web_server" {
 
   # Pass variables into the module
   project_name     = var.project_name
+  environment      = var.environment
+  vpc_id           = var.vpc_id
+  subnet_id        = var.subnet_id
+  instance_type    = var.instance_type
+  key_name         = var.key_name
+  allowed_ssh_cidr = var.allowed_ssh_cidr
+}
+
+module "web_server_2" {
+  source = "./modules/webserver"
+
+  # Pass variables into the module
+  project_name     = "${var.project_name}-2"
   environment      = var.environment
   vpc_id           = var.vpc_id
   subnet_id        = var.subnet_id

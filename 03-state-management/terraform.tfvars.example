@@ -3,3 +3,4 @@
 
 aws_region = "ap-south-1"
 key_name   = "sarowar-ostad-mumbai"
+subnet_id  = "subnet-0596d18a27a91b24e"  # Replace with your actual public subnet ID
