@@ -260,7 +260,7 @@ The complete three-tier bootstrap. Runs as EC2 `user_data` on first boot - **exe
 - All output tee'd to `/var/log/user-data.log` and system log
 - Random DB password: `openssl rand -base64 16 | tr -d '/+='` (no Secrets Manager yet)
 - Public IP fetched from EC2 Instance Metadata Service: `http://169.254.169.254/latest/meta-data/public-ipv4`
-- App cloned from GitHub at boot: `github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git`
+- App cloned from GitHub at boot: `github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git`
 - Migrations run in sorted order: `ls migrations/*.sql | sort | psql ...`
 - PM2 configured for systemd restart on reboot
 
@@ -844,7 +844,7 @@ Lessons 10+ use Secrets Manager, where the secret ARN is passed via `templatefil
 
 ### Why Clone from GitHub Instead of Bundling App Code?
 
-The `single-instance.sh` script clones from `github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git`. Alternatives:
+The `single-instance.sh` script clones from `github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git`. Alternatives:
 
 | Approach | Pros | Cons |
 |---|---|---|

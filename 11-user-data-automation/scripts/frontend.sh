@@ -34,7 +34,7 @@ apt-get install -y nodejs
 # Clone repository and build React app
 # ------------------------------------------------------------------------------
 APP_DIR="/home/ubuntu/bmi-health-tracker"
-git clone https://github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
+git clone https://github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git "$APP_DIR"
 chown -R ubuntu:ubuntu "$APP_DIR"
 
 cd "$APP_DIR/frontend"

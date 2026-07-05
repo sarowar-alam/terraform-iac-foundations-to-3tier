@@ -87,6 +87,30 @@ resource "aws_security_group" "frontend" {
   description = "Frontend EC2: HTTP from ALB (or internet in basic mode)"
   vpc_id      = var.vpc_id
 
+  # Phase 1 (basic): port 80 open to internet directly
+  dynamic "ingress" {
+    for_each = var.frontend_public_access ? [1] : []
+    content {
+      description = "HTTP from internet (Phase 1: frontend in public subnet)"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  # Phase 2 (production): port 80 from ALB SG only
+  dynamic "ingress" {
+    for_each = var.frontend_public_access ? [] : [1]
+    content {
+      description     = "HTTP from ALB only (Phase 2: frontend in private subnet)"
+      from_port       = 80
+      to_port         = 80
+      protocol        = "tcp"
+      security_groups = [aws_security_group.alb.id]
+    }
+  }
+
   # SSH from bastion only
   ingress {
     description     = "SSH from bastion"
@@ -109,29 +133,7 @@ resource "aws_security_group" "frontend" {
   }
 }
 
-# HTTP from internet (Phase 1 — basic: frontend in public subnet)
-resource "aws_security_group_rule" "frontend_http_public" {
-  count             = var.frontend_public_access ? 1 : 0
-  type              = "ingress"
-  description       = "HTTP from internet (Phase 1: frontend in public subnet)"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.frontend.id
-}
-
-# HTTP from ALB only (Phase 2 — production: frontend in private subnet)
-resource "aws_security_group_rule" "frontend_http_alb" {
-  count                    = var.frontend_public_access ? 0 : 1
-  type                     = "ingress"
-  description              = "HTTP from ALB only (Phase 2: frontend in private subnet)"
-  from_port                = 80
-  to_port                  = 80
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.alb.id
-  security_group_id        = aws_security_group.frontend.id
-}
+# (HTTP rules are inline above — no separate aws_security_group_rule resources needed)
 
 # ------------------------------------------------------------------------------
 # Backend Security Group

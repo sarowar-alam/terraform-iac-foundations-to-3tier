@@ -50,8 +50,5 @@ resource "aws_secretsmanager_secret_version" "database_url" {
   secret_id = aws_secretsmanager_secret.database_url.id
   # Connection string format: postgresql://user:password@host:5432/dbname
   secret_string = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}:5432/${var.db_name}"
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
+  # No ignore_changes — password managed by random_password.db in root and must stay in sync
 }

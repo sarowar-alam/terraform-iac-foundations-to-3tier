@@ -28,5 +28,11 @@ variable "db_host" {
 variable "recovery_window_days" {
   description = "Days before permanent deletion after secret is deleted (0 = immediate)"
   type        = number
-  default     = 0 # 0 for demo environments so terraform destroy is clean
+  default     = 0
+}
+
+variable "db_password" {
+  description = "Database master password (generated at root level)"
+  type        = string
+  sensitive   = true
 }

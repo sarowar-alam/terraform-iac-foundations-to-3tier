@@ -10,8 +10,8 @@
 #   ${environment}               — dev / staging / prod
 #   ${aws_region}                — ap-south-1
 # ==============================================================================
-set -e
-exec > /var/log/user-data.log 2>&1
+set -euo pipefail
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 
 echo "============================="
 echo " BMI Backend — User Data"

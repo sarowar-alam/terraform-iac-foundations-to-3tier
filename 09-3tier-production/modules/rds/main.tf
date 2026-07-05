@@ -21,26 +21,30 @@ resource "aws_db_parameter_group" "postgres14" {
   family      = "postgres14"
   description = "PostgreSQL 14 parameter group for ${var.project_name}"
 
-  # Connection pooling tuning
+  # Connection pooling tuning - max_connections is a static parameter, requires reboot
   parameter {
-    name  = "max_connections"
-    value = "100"
+    name         = "max_connections"
+    value        = "100"
+    apply_method = "pending-reboot"
   }
 
-  # Memory tuning — match the values from database/setup-database.sh
+  # Memory tuning - shared_buffers is a static parameter, requires reboot
   parameter {
-    name  = "shared_buffers"
-    value = "{DBInstanceClassMemory/4}"
-  }
-
-  parameter {
-    name  = "log_connections"
-    value = "1"
+    name         = "shared_buffers"
+    value        = "{DBInstanceClassMemory/4}"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "log_disconnections"
-    value = "1"
+    name         = "log_connections"
+    value        = "1"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "log_disconnections"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   parameter {
@@ -50,10 +54,6 @@ resource "aws_db_parameter_group" "postgres14" {
 
   tags = {
     Name = "${var.project_name}-${var.environment}-pg14-params"
-  }
-
-  lifecycle {
-    create_before_destroy = true
   }
 }
 
@@ -93,6 +93,9 @@ resource "aws_db_instance" "main" {
   backup_retention_period = var.backup_retention_days
   backup_window           = "03:00-04:00" # UTC — 8:30-9:30 AM IST
   maintenance_window      = "sun:04:00-sun:05:00"
+
+  # Apply password changes immediately (don't defer to maintenance window)
+  apply_immediately = true
 
   # Deletion protection — set false for demo (destroy after class)
   deletion_protection = var.deletion_protection

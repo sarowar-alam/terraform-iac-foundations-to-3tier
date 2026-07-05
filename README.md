@@ -389,7 +389,7 @@ DynamoDB: full on terraform-state-lock table
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/md-sarowar-alam/terraform-iac-foundations-to-3tier.git
+git clone https://github.com/sarowar-alam/terraform-iac-foundations-to-3tier.git
 cd terraform-iac-foundations-to-3tier
 ```
 

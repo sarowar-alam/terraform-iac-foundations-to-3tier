@@ -31,6 +31,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  profile="sarowar-ostad"
   default_tags {
     tags = {
       Project     = var.project_name
@@ -38,6 +39,17 @@ provider "aws" {
       ManagedBy   = "terraform"
     }
   }
+}
+
+# Generate DB password at root level — passed to both rds and secrets modules
+resource "random_password" "db" {
+  length           = 16
+  special          = true
+  override_special = "!$&*()-_=+"  # URL-safe only — no #%:?[]{}@/<> which break postgresql:// URLs
+  min_upper        = 2
+  min_lower        = 2
+  min_numeric      = 2
+  min_special      = 2
 }
 
 module "vpc" {
@@ -70,7 +82,7 @@ module "rds" {
   environment         = var.environment
   subnet_ids          = module.vpc.private_db_subnet_ids
   security_group_id   = module.security_groups.rds_sg_id
-  db_password         = module.secrets.db_password
+  db_password         = random_password.db.result
   instance_class      = var.db_instance_class
   multi_az            = false
   skip_final_snapshot = true
@@ -81,18 +93,9 @@ module "secrets" {
   project_name = var.project_name
   environment  = var.environment
   db_host      = module.rds.db_host
-  depends_on   = [module.rds]
+  db_password  = random_password.db.result
 }
 
-module "bastion" {
-  source = "./modules/ec2"
-  name               = "${var.project_name}-${var.environment}-bastion"
-  role               = "bastion"
-  instance_type      = "t3.micro"
-  subnet_id          = module.vpc.public_subnet_ids[0]
-  security_group_ids = [module.security_groups.bastion_sg_id]
-  key_name           = var.key_name
-}
 
 # Backend â€” PRIVATE subnet (same as Phase 1)
 module "backend" {
@@ -124,6 +127,7 @@ module "frontend" {
   subnet_id          = module.vpc.private_app_subnet_ids[1]
   security_group_ids = [module.security_groups.frontend_sg_id]
   key_name           = var.key_name
+  iam_instance_profile = var.ssm_instance_profile
 
   user_data = templatefile("${path.module}/scripts/frontend.sh", {
     backend_private_ip = module.backend.private_ip

@@ -50,5 +50,9 @@ variable "hosted_zone_id" {
 
 variable "domain_name" {
   type    = string
-  default = "bmi.ostaddevops.click"
+}
+
+variable "ssm_instance_profile" {
+  description = "Name of the IAM instance profile to attach to frontend and backend EC2 instances for SSM access"
+  type        = string
 }
